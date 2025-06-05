@@ -9,6 +9,7 @@ interface GoogleAutocompleteInputProps {
   placeholder?: string;
   className?: string;
   googleMapApiKey: string;
+  searchingRegion?: string[];
 }
 
 declare global {
@@ -29,13 +30,17 @@ export default function GoogleAutocompleteInput({
   onChange,
   placeholder = '',
   className = '',
-  googleMapApiKey
+  googleMapApiKey,
+  searchingRegion = ['us', 'in'],
 }: GoogleAutocompleteInputProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [autocompleteElement, setAutocompleteElement] = useState<google.maps.places.PlaceAutocompleteElement | null>(null);
 
   useEffect(() => {
-    if (!containerRef.current || !googleMapApiKey) return;
+    if (!containerRef.current || !googleMapApiKey) {
+      console.error('Google Maps API key or containerRef is missing.');
+      return;
+    }
 
     const loadGoogleMaps = async () => {
       try {
@@ -49,21 +54,30 @@ export default function GoogleAutocompleteInput({
 
         if (containerRef.current) containerRef.current.innerHTML = '';
 
-        const element = new (google.maps.places.PlaceAutocompleteElement as any)({ 
-          includedRegionCodes: ['us'],
+        const element = new (google.maps.places.PlaceAutocompleteElement as any)({
+          includedRegionCodes: searchingRegion,
         });
+
+        if (!element) {
+          console.error('Failed to initialize PlaceAutocompleteElement.');
+          return;
+        }
 
         if (placeholder) element.setAttribute('placeholder', placeholder);
         if (value) element.setAttribute('value', value);
 
-        containerRef.current?.appendChild(element);
+        if (containerRef.current) {
+          containerRef.current.appendChild(element);
+        }
         setAutocompleteElement(element);
 
-        //@ts-ignore
-        element.addEventListener('gmp-select', async ({ placePrediction }) => {
-          const place = placePrediction.toPlace();
-          await place.fetchFields({ fields: ['displayName', 'formattedAddress', 'location'] });
-          onChange(place.toJSON());
+        element.addEventListener('gmp-select', async (event: any) => {
+          const placePrediction = event.placePrediction;
+          if (placePrediction) {
+            const place = placePrediction.toPlace();
+            await place.fetchFields({ fields: ['displayName', 'formattedAddress', 'location'] });
+            onChange(place.toJSON());
+          }
         });
 
         element.addEventListener('input', (event: Event) => {
@@ -71,14 +85,13 @@ export default function GoogleAutocompleteInput({
           const target = inputEvent.target as HTMLInputElement;
           onChange(target.value);
         });
-
       } catch (error) {
         console.error('Error loading Google Maps Place Autocomplete:', error);
       }
     };
 
     loadGoogleMaps();
-  }, [placeholder, googleMapApiKey]);
+  }, [placeholder, googleMapApiKey, searchingRegion, value]);
 
   return <div ref={containerRef} className={className} />;
 }
