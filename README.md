@@ -2,7 +2,8 @@
 
 A React component for Google Places Autocomplete using the official `PlaceAutocompleteElement`.
 
-![Demo](./demo.gif)
+![Demo](https://github.com/SagarRana001/portfolio/blob/main/ezgif-507dfa8aea5931.gif)
+
 
 ## ✨ Features
 
